@@ -3,6 +3,7 @@ const parse = require('url').parse
 const crypto = require('./crypto')
 const request = require('./request')
 const match = require('./provider/match')
+const querystring = require('querystring')
 
 const hook = {
 	request: {
@@ -99,7 +100,7 @@ hook.request.before = ctx => {
 		})
 		.catch(error => console.log(error, ctx.req.url))
 	}
-	if((hook.target.host.includes(url.hostname)) && url.path.startsWith('/weapi/')){
+	else if((hook.target.host.includes(url.hostname)) && url.path.startsWith('/weapi/')){
 		ctx.req.headers['X-Real-IP'] = '118.88.88.88'
 		ctx.netease = {web: true, path: url.path.replace(/^\/weapi\//, '/api/').replace(/\?.+$/, '').replace(/\/\d*$/, '')}
 	}
@@ -170,7 +171,12 @@ hook.request.after = ctx => {
 		.catch(error => console.log(error, ctx.req.url))
 	}
 	else if(package){
-		if(/p\d+c*.music.126.net/.test(ctx.req.url)){
+		const req = ctx.req
+		if([201, 301, 302, 303, 307, 308].includes(proxyRes.statusCode)){
+			return request(req.method, parse(req.url).resolve(proxyRes.headers.location), req.headers)
+			.then(response => ctx.proxyRes = response)
+		}
+		else if(/p\d+c*.music.126.net/.test(ctx.req.url)){
 			proxyRes.headers['content-type'] = 'audio/mpeg'
 		}
 	}
@@ -275,9 +281,9 @@ const tryMatch = ctx => {
 			.then(song => {
 				item.url = global.endpoint ? `${global.endpoint}/package/${crypto.base64.encode(song.url)}/${item.id}.mp3` : song.url
 				item.md5 = song.md5 || crypto.md5.digest(song.url)
+				item.br = song.br || 128000
 				item.size = song.size
 				item.code = 200
-				item.br = 320000
 				item.type = 'mp3'
 				return song
 			})
@@ -295,8 +301,9 @@ const tryMatch = ctx => {
 				const task = {key: song.url.replace(/\?.*$/, ''), url: song.url}
 				try{
 					let header = netease.param.header
+					let cookie = querystring.parse(ctx.req.headers.cookie.replace(/\s/g, ''), ';')
 					header = typeof(header) === 'string' ? JSON.parse(header) : header
-					let os = header.os, version = header.appver
+					let os = header.os || cookie.os, version = header.appver || cookie.appver
 					if(os in limit && newer(limit[os], version))
 						return cache(computeHash, task, 7 * 24 * 60 * 60 * 1000).then(value => item.md5 = value)
 				}
