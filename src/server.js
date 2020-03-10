@@ -15,7 +15,7 @@ const proxy = {
 				res.writeHead(200, {'Content-Type': 'application/x-ns-proxy-autoconfig'})
 				res.end(`
 					function FindProxyForURL(url, host) {
-						if (${hook.target.host.map(host => (`host == '${host}'`)).join(' || ')}) {
+						if (${Array.from(hook.target.host).map(host => (`host == '${host}'`)).join(' || ')}) {
 							return 'PROXY ${url.hostname}:${url.port || 80}'
 						}
 						return 'DIRECT'
@@ -158,8 +158,8 @@ const proxy = {
 }
 
 const options = {
-	key: fs.readFileSync(path.join(__dirname, 'server.key')),
-	cert: fs.readFileSync(path.join(__dirname, 'server.crt'))
+	key: fs.readFileSync(path.join(__dirname, '..', 'server.key')),
+	cert: fs.readFileSync(path.join(__dirname, '..', 'server.crt'))
 }
 
 const server = {
@@ -168,7 +168,7 @@ const server = {
 }
 
 server.whitelist = []
-server.blacklist = ['//127\\.\\d+\\.\\d+\\.\\d+', '//localhost']
+server.blacklist = ['://127\\.\\d+\\.\\d+\\.\\d+', '://localhost']
 server.authentication = null
 
 module.exports = server

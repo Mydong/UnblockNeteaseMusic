@@ -1,5 +1,6 @@
 const cache = require('../cache')
 const insure = require('./insure')
+const select = require('./select')
 const crypto = require('../crypto')
 const request = require('../request')
 
@@ -8,6 +9,13 @@ const headers = {
 	// 'referer': 'http://www.xiami.com/'
 	'referer': 'https://h.xiami.com/'
 }
+
+const format = song => ({
+	id: song.song_id,
+	name: song.song_name,
+	album: {id: song.album_id, name: song.album_name},
+	artists: [{id: song.artist_id, name: song.artist_name}]
+})
 
 const caesar = pattern => {
 	const height = parseInt(pattern[0])
@@ -64,11 +72,9 @@ const search = info => {
 	return request('GET', url, headers)
 	.then(response => response.jsonp())
 	.then(jsonBody => {
-		const matched = jsonBody.data.songs[0]
-		if (matched)
-			return matched.song_id
-		else
-			return Promise.reject()
+		const list = jsonBody.data.songs.map(format)
+		const matched = select(list, info)
+		return matched ? matched.id : Promise.reject()
 	})
 }
 

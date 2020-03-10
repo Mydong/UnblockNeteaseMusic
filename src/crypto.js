@@ -50,7 +50,7 @@ module.exports = {
 		}
 	},
 	miguapi: {
-		encrypt: object => {
+		encryptBody: object => {
 			const text = JSON.stringify(object)
 			const derive = (password, salt, keyLength, ivSize) => { // EVP_BytesToKey
 				salt = salt || Buffer.alloc(0)
@@ -76,8 +76,8 @@ module.exports = {
 		}
 	},
 	base64: {
-		encode: text => Buffer.from(text).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
-		decode: text => Buffer.from(text.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('ascii')
+		encode: (text, charset) => Buffer.from(text, charset).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
+		decode: (text, charset) => Buffer.from(text.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString(charset)
 	},
 	uri: {
 		retrieve: id => {
@@ -98,3 +98,5 @@ module.exports = {
 		})
 	}
 }
+
+try {module.exports.kuwoapi = require('./kwDES')} catch(e) {}

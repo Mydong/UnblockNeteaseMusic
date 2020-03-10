@@ -1,11 +1,12 @@
 const cache = require('../cache')
 const insure = require('./insure')
+const select = require('./select')
 const request = require('../request')
 
 const headers = {
 	'origin': 'http://y.qq.com/',
 	'referer': 'http://y.qq.com/',
-	'cookie': null // 'uin=; qm_keyst=',
+	'cookie': process.env.QQ_COOKIE || null // 'uin=; qm_keyst=',
 }
 
 const playable = song => {
@@ -16,6 +17,14 @@ const playable = song => {
 	const tryFlag = switchFlag[13]
 	return ((playFlag == 1) || ((playFlag == 1) && (tryFlag == 1)))
 }
+
+const format = song => ({
+	id: {song: song.mid, file: song.file.media_mid},
+	name: song.name,
+	duration: song.interval * 1000,
+	album: {id: song.album.mid, name: song.album.name},
+	artists: song.singer.map(({mid, name}) => ({id: mid, name}))
+})
 
 const search = info => {
 	const url =
@@ -29,11 +38,9 @@ const search = info => {
 	return request('GET', url)
 	.then(response => response.jsonp())
 	.then(jsonBody => {
-		const matched = jsonBody.data.song.list[0]
-		if (matched)
-			return {song: matched.mid, file: matched.file.media_mid}
-		else
-			return Promise.reject()
+		const list = jsonBody.data.song.list.map(format)
+		const matched = select(list, info)
+		return matched ? matched.id : Promise.reject()
 	})
 }
 
@@ -95,8 +102,9 @@ const ticket = (id, format) => {
 }
 
 const track = id => {
+	id.key = id.file
 	return Promise.all(
-		[['F000', '.flac'], ['M800', '.mp3'], ['M500', '.mp3']].slice((headers.cookie || typeof(window) !== 'undefined') ? 1 : 2)
+		[['F000', '.flac'], ['M800', '.mp3'], ['M500', '.mp3']].slice((headers.cookie || typeof(window) !== 'undefined') ? (select.ENABLE_FLAC ? 0 : 1) : 2)
 		.map(format => ticket(id, format).catch(() => null).then(vkey => ({vkey, format})))
 	)
 	.then(result => {
